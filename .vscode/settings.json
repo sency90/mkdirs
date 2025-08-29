@@ -1,0 +1,37 @@
+{
+    "vim.autoindent": true,
+    "terminal.integrated.profiles.windows": {
+        "PowerShell": {
+            "source": "PowerShell",
+            "icon": "terminal-powershell"
+        },
+        "Command Prompt": {
+            "path": [
+                "${env:windir}\\Sysnative\\cmd.exe",
+                "${env:windir}\\System32\\cmd.exe"
+            ],
+            "args": [],
+            "icon": "terminal-cmd"
+        },
+        "Git Bash": {
+            "source": "Git Bash"
+        },
+        "Ubuntu-24.04 (WSL)": {
+            "path": "C:\\Windows\\System32\\wsl.exe",
+            "args": [
+                "-d",
+                "Ubuntu-24.04"
+            ]
+        }
+    },
+    "terminal.integrated.defaultProfile.windows": "Ubuntu-24.04 (WSL)",
+    "[cpp]": {
+        "editor.defaultFormatter": "xaver.clang-format",
+        "editor.formatOnSave": false,
+        "editor.formatOnPaste": false,
+        "editor.formatOnType": false,
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true, // Tab 대신 공백 사용
+        "editor.detectIndentation": false // 자동 추정 비활성화
+    }
+}

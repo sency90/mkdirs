@@ -1,0 +1,38 @@
+# ---- Build artifacts ----
+build/
+out/
+bin/
+*.o
+*.a
+*.so
+*.exe
+*.dll
+
+# ---- CMake files ----
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+
+# ---- Test results ----
+test_output/
+*.log
+*.gcda
+*.gcno
+*.gcov
+
+# ---- VSCode ----
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
+
+# ---- Backup / temp files ----
+*~
+*.swp
+*.tmp
+*.bak
+
+# ---- GTest/GMock local source (if cloned locally) ----
+googletest/
