@@ -9,7 +9,7 @@
 #include <string>
 
 namespace {
-const std::string DIRS_FNAME_SUFFIX = "_dir_list.txt";
+const std::string DIRS_FNAME_SUFFIX = "dir_list.txt";
 // const std::string DIRS_FNAME_SUFFIX_REVERSE = ReverseStr(DIRS_FNAME_SUFFIX);
 std::ifstream ifs;
 std::stringstream ss;
@@ -36,7 +36,7 @@ int main() {
         ifs.open(p->d_name);
         while (std::getline(ifs, line)) {
             if(line.empty()) continue;
-            sscanf(line.c_str(), "%*[^]] %[^\r\n]", dpath);
+            sscanf(line.c_str(), "%*[^]]] %[^\r\n]", dpath);
             printf("%s\n", dpath);
         }
         ifs.close();
