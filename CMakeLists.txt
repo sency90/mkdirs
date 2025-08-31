@@ -10,7 +10,7 @@ add_executable(mkdirs
   src/main.cpp
 )
 target_include_directories(mkdirs PRIVATE src)
-target_compile_options(mkdirs PRIVATE -g -O2)
+target_compile_options(mkdirs PRIVATE -g)
 
 # --- Tests on/off switch ---
 option(BUILD_TESTS "Build unit tests" ON)

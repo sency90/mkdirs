@@ -1,0 +1,6 @@
+[25/08/30 05:10:42] /home/plzrun/github/timescan/build
+[25/08/30 05:10:42] :filemanager_test_dir2
+[25/08/30 05:10:42] ::subdir
+[25/08/30 05:10:42] :filemanager_test_dir1
+[25/08/30 05:10:42] ::subdir
+[25/08/30 05:10:42] :filemanager_test_dir3

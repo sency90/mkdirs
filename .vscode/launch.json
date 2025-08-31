@@ -8,13 +8,8 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceRoot}/build/ts",
-            "args": [
-                ".",
-                "after",
-                "25/08/10",
-                "06:39:00"
-            ],
+            "program": "${workspaceRoot}/build/mkdirs",
+            //"args": [ ".", "after", "25/08/10", "06:39:00" ],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}",
             "environment": [],
