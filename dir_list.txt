@@ -1,6 +1,4 @@
-[25/08/30 05:10:42] /home/plzrun/github/timescan/build
-[25/08/30 05:10:42] :filemanager_test_dir2
-[25/08/30 05:10:42] ::subdir
-[25/08/30 05:10:42] :filemanager_test_dir1
-[25/08/30 05:10:42] ::subdir
-[25/08/30 05:10:42] :filemanager_test_dir3
+[25/09/03 02:25:52] /edl_ufbm/ufbm/udskbck
+[25/09/03 02:25:49] :RFD_G
+[25/09/03 02:25:47] :RFD_P
+[25/09/03 02:25:52] :RBM_S

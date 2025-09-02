@@ -9,6 +9,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <string_view>
+#include <functional>
 // #include <stack>
 
 namespace {
@@ -85,14 +87,19 @@ int RepositionParentNode(int cur_colon_cnt, int prv_colon_cnt,
 
 std::string cmd;
 void Traverse(std::vector<std::vector<int>> &v, int x,
-              const std::string &dpath) {
+              const std::string &dpath, int recursive_level) {
     if (!dpath.empty()) {
-        cmd = "mkdir -p -m 750 " + dpath;
-        printf("%s\n", cmd.c_str());
+        if(recursive_level==1) {
+            cmd = "mkdir -p -m 750 " + dpath;
+        }
+        else {
+            cmd = "mkdir -m 750 " + dpath;
+        }
+        printf("[%d] %s\n", recursive_level, cmd.c_str());
     }
     if (v.size() <= x) return;
     for (int y : v[x]) {
-        Traverse(v, y, dpath + dir_map[y] + "/");
+        Traverse(v, y, dpath + dir_map[y] + "/", recursive_level+1);
     }
 }
 
@@ -143,7 +150,48 @@ int main() {
         }
         ifs.close();
 
-        Traverse(v, 0, "");
+#define REPLACE_FEATURE
+#ifdef REPLACE_FEATURE
+        const int ROOT_NODE = 1;
+        if (dir_map.size() > ROOT_NODE) {
+            // replace "/edl_ufbm/" -> // "/edl_ufbm1/" and "/edl_ufbm2/")
+
+            std::string_view needle = "/edl_ufbm/";
+
+            const auto it = std::search(
+                dir_map[ROOT_NODE].begin(), dir_map[ROOT_NODE].end(),
+                std::boyer_moore_searcher(needle.begin(), needle.end()));
+            if (it == dir_map[ROOT_NODE].end()) continue;
+
+            auto &siblings = v[parent[ROOT_NODE]];
+            if (auto jt =
+                    std::find(siblings.begin(), siblings.end(), ROOT_NODE);
+                jt != siblings.end()) {
+                siblings.erase(jt);
+            }
+
+            const int idx = int(it - dir_map[ROOT_NODE].begin());
+
+            auto AddVariant = [&](std::string_view replacement) {
+                ++cur_node;
+                if ((int)v.size() <= cur_node) v.resize(cur_node + 1);
+
+                std::string new_name = dir_map[ROOT_NODE];
+                new_name.replace(idx, needle.size(), replacement);
+                dir_map.push_back(std::move(new_name));
+
+                parent.push_back(parent[ROOT_NODE]);
+                v[parent[ROOT_NODE]].push_back(cur_node);
+
+                v[cur_node] = v[ROOT_NODE];
+            };
+
+            AddVariant("/edl_ufbm1/");
+            AddVariant("/edl_ufbm2/");
+        }
+#endif  // REPLACE_FEATURE
+
+        Traverse(v, 0, "", 0);
     }
     if (dp) closedir(dp);
     return 0;
