@@ -103,6 +103,11 @@ void Traverse(std::vector<std::vector<int>> &v, int x,
     }
 }
 
+template <typename Vec>
+inline void GrowTo(Vec & vec, int min_size) {
+    if(vec.size() < min_size) vec.resize(min_size);
+}
+
 void Init() {
     v.clear();
     parent.clear();
@@ -140,8 +145,7 @@ int main() {
             parent_node =
                 RepositionParentNode(cur_colon_cnt, prv_colon_cnt, parent_node);
 
-            if (v.size() <= parent_node)
-                v.resize(parent_node + 1, std::vector<int>());
+            GrowTo(v, parent_node + 1);
             v[parent_node].push_back(cur_node);
             parent.push_back(parent_node);
             dir_map.push_back(GetCurDname(dpath, cur_colon_cnt));
@@ -174,7 +178,7 @@ int main() {
 
             auto AddVariant = [&](std::string_view replacement) {
                 ++cur_node;
-                if ((int)v.size() <= cur_node) v.resize(cur_node + 1);
+                GrowTo(v, cur_node+1);
 
                 std::string new_name = dir_map[ROOT_NODE];
                 new_name.replace(idx, needle.size(), replacement);
