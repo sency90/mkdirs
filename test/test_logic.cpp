@@ -1,21 +1,19 @@
+#include <dirent.h>
 #include <gtest/gtest.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <string>
-#include <vector>
 #include <fstream>
 #include <sstream>
-#include <dirent.h>
-#include <unistd.h>
-#include <sys/stat.h>
+#include <string>
+#include <vector>
 
-// ------------------------ 테스트 대상 소스 포함 ------------------------
-// 원본 코드의 main과 충돌하지 않도록 이름을 바꿈.
 #define main gen_main
 #include "../src/main.cpp"
 #undef main
-// ---------------------------------------------------------------------
 
 namespace {
 
@@ -37,7 +35,6 @@ std::string MakeTempDir() {
     return std::string(absbuf);
 }
 
-// 재귀 삭제 (C++11, <filesystem> 없이 dirent로 구현)
 void RmRf(const std::string& path) {
     DIR* dp = opendir(path.c_str());
     if (!dp) {
@@ -49,7 +46,7 @@ void RmRf(const std::string& path) {
     while ((ent = readdir(dp)) != nullptr) {
         if (!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..")) continue;
         std::string child = path + "/" + ent->d_name;
-        struct stat st{};
+        struct stat st {};
         if (lstat(child.c_str(), &st) == 0) {
             if (S_ISDIR(st.st_mode)) {
                 RmRf(child);
@@ -65,8 +62,10 @@ void RmRf(const std::string& path) {
 struct CwdGuard {
     char oldcwd[PATH_MAX];
     explicit CwdGuard(const std::string& new_cwd) {
-        if (!getcwd(oldcwd, sizeof(oldcwd))) throw std::runtime_error("getcwd failed");
-        if (chdir(new_cwd.c_str()) != 0) throw std::runtime_error("chdir failed");
+        if (!getcwd(oldcwd, sizeof(oldcwd)))
+            throw std::runtime_error("getcwd failed");
+        if (chdir(new_cwd.c_str()) != 0)
+            throw std::runtime_error("chdir failed");
     }
     ~CwdGuard() { chdir(oldcwd); }
 };
@@ -84,7 +83,7 @@ struct StdoutCapture {
     ~StdoutCapture() {
         fflush(stdout);
         // stdout 원상복구
-        freopen("/dev/tty", "w", stdout); // TTY 없는 환경이면 무시됨
+        freopen("/dev/tty", "w", stdout);
         if (old_stdout) stdout = old_stdout;
     }
 };
@@ -102,7 +101,7 @@ void WriteAll(const std::string& path, const std::string& content) {
     ofs.flush();
 }
 
-} // namespace
+}  // namespace
 
 // ---------------------------------------------------------------------
 // 테스트 1) 기본 트리 파싱/출력 검증 (REPLACE_FEATURE 미적용 케이스)
@@ -121,7 +120,8 @@ TEST(DirListGenerator, SimpleTree_NoReplaceFeature) {
 
     // 샘플 dir_list 파일 생성 (접미사: "dir_list.txt")
     const char* fname = "simple_dir_list.txt";
-    // sscanf("%*[^]]] %[^\r\n]", dpath)을 통과하려면 ']' 뒤에 공백 + 경로가 필요
+    // sscanf("%*[^]]] %[^\r\n]", dpath)을 통과하려면 ']' 뒤에 공백 + 경로가
+    // 필요
     const std::string content =
         "[ts] :root\n"
         "[ts] ::childA\n"
@@ -188,6 +188,153 @@ TEST(DirListGenerator, ReplaceFeature_DuplicatesRootAndChildren) {
         "[1] mkdir -p -m 750 proj/edl_ufbm2/x/\n"
         "[2] mkdir -m 750 proj/edl_ufbm2/x/c1/\n"
         "[2] mkdir -m 750 proj/edl_ufbm2/x/c2/\n";
+    EXPECT_EQ(out, expected);
+
+    RmRf(tmp);
+}
+
+// ---------------------------------------------------------------------
+// 테스트 3) 비매칭 파일만 존재하면 출력이 없어야 함
+//   - *_dir_list.txt 가 아니면 무시
+// ---------------------------------------------------------------------
+TEST(DirListGenerator, IgnoreNonMatchingFilesProducesNoOutput) {
+    const std::string tmp = MakeTempDir();
+    CwdGuard guard(tmp);
+
+    // 비매칭 파일만 생성
+    WriteAll("not_match.txt", "[ts] :root\n");
+
+    const std::string outpath = tmp + "/stdout_none.txt";
+    {
+        StdoutCapture cap(outpath);
+        ASSERT_EQ(0, gen_main());
+    }
+    const std::string out = ReadAll(outpath);
+    EXPECT_TRUE(out.empty());
+
+    RmRf(tmp);
+}
+
+// ---------------------------------------------------------------------
+// 테스트 4) 깊은 계층 & 상위로 되돌아가기 (RepositionParentNode 분기 커버)
+//   입력:
+//     :root
+//     ::A
+//     :::A1
+//     ::B     (3 -> 2로 감소)
+//     :C      (2 -> 1로 감소)
+// ---------------------------------------------------------------------
+TEST(DirListGenerator, DeepHierarchy_UpAndDownLevels) {
+    const std::string tmp = MakeTempDir();
+    CwdGuard guard(tmp);
+
+    const char* fname = "deep_dir_list.txt";
+    const std::string content =
+        "[ts] :root\n"
+        "[ts] ::A\n"
+        "[ts] :::A1\n"
+        "[ts] ::B\n"
+        "[ts] :C\n";
+    WriteAll(fname, content);
+
+    const std::string outpath = tmp + "/stdout_deep.txt";
+    {
+        StdoutCapture cap(outpath);
+        ASSERT_EQ(0, gen_main());
+    }
+
+    const std::string out = ReadAll(outpath);
+    const std::string expected =
+        "[1] mkdir -p -m 750 root/\n"
+        "[2] mkdir -m 750 root/A/\n"
+        "[3] mkdir -m 750 root/A/A1/\n"
+        "[2] mkdir -m 750 root/B/\n"
+        "[2] mkdir -m 750 root/C/\n";
+    EXPECT_EQ(out, expected);
+
+    RmRf(tmp);
+}
+
+// ---------------------------------------------------------------------
+// 테스트 5) 빈 줄 / CRLF 섞여 있어도 정상 파싱
+// ---------------------------------------------------------------------
+TEST(DirListGenerator, HandlesEmptyLinesAndCRLF) {
+    const std::string tmp = MakeTempDir();
+    CwdGuard guard(tmp);
+
+    const char* fname = "crlf_dir_list.txt";
+    const std::string content =
+        "[ts] :root\r\n"
+        "\r\n"
+        "[ts] ::A\r\n"
+        "\n"
+        "[ts] ::B\r\n";
+    WriteAll(fname, content);
+
+    const std::string outpath = tmp + "/stdout_crlf.txt";
+    {
+        StdoutCapture cap(outpath);
+        ASSERT_EQ(0, gen_main());
+    }
+
+    const std::string out = ReadAll(outpath);
+    const std::string expected =
+        "[1] mkdir -p -m 750 root/\n"
+        "[2] mkdir -m 750 root/A/\n"
+        "[2] mkdir -m 750 root/B/\n";
+    EXPECT_EQ(out, expected);
+
+    RmRf(tmp);
+}
+
+// ---------------------------------------------------------------------
+// 테스트 6) 루트만 있는 경우 (Traverse의 level==1 분기만 타게)
+// ---------------------------------------------------------------------
+TEST(DirListGenerator, RootOnly_NoChildren) {
+    const std::string tmp = MakeTempDir();
+    CwdGuard guard(tmp);
+
+    const char* fname = "root_only_dir_list.txt";
+    const std::string content = "[ts] :just_root\n";
+    WriteAll(fname, content);
+
+    const std::string outpath = tmp + "/stdout_rootonly.txt";
+    {
+        StdoutCapture cap(outpath);
+        ASSERT_EQ(0, gen_main());
+    }
+
+    const std::string out = ReadAll(outpath);
+    const std::string expected = "[1] mkdir -p -m 750 just_root/\n";
+    EXPECT_EQ(out, expected);
+
+    RmRf(tmp);
+}
+
+// ---------------------------------------------------------------------
+// 테스트 7) 유사 토큰이지만 미치환 ("/edl_ufbm/" 아님 → it==end 브랜치 커버)
+//   - "/edl_ufbmX/" 처럼 슬래시로 감싸지지 않으면 치환되면 안 됨
+// ---------------------------------------------------------------------
+TEST(DirListGenerator, SimilarButNotReplaceToken) {
+    const std::string tmp = MakeTempDir();
+    CwdGuard guard(tmp);
+
+    const char* fname = "similar_token_dir_list.txt";
+    const std::string content =
+        "[ts] :proj/edl_ufbmX/x\n"
+        "[ts] ::c1\n";
+    WriteAll(fname, content);
+
+    const std::string outpath = tmp + "/stdout_similar.txt";
+    {
+        StdoutCapture cap(outpath);
+        ASSERT_EQ(0, gen_main());
+    }
+
+    const std::string out = ReadAll(outpath);
+    const std::string expected =
+        "[1] mkdir -p -m 750 proj/edl_ufbmX/x/\n"
+        "[2] mkdir -m 750 proj/edl_ufbmX/x/c1/\n";
     EXPECT_EQ(out, expected);
 
     RmRf(tmp);
